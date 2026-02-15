@@ -10,6 +10,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class UAnimMontage;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -30,7 +31,7 @@ class AObstacle_AvoidanceCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-	
+
 protected:
 
 	/** Jump Input Action */
@@ -49,23 +50,73 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
+	/** Dash Input Action */
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<UInputAction> DashAction;
+
+	/** Slide Input Action */
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<UInputAction> SlideAction;
+
+	// ── Dash ──
+
+	/** Dash AnimMontage (BP에서 설정) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dash")
+	TObjectPtr<UAnimMontage> DashMontage;
+
+	/** Dash 이동 속도 (cm/s) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dash")
+	float DashSpeed = 1500.f;
+
+	/** Dash 쿨다운 (초) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dash")
+	float DashCooldown = 1.f;
+
+	// ── Slide ──
+
+	/** Slide AnimMontage (BP에서 설정) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
+	TObjectPtr<UAnimMontage> SlideMontage;
+
+	/** Slide 이동 속도 (cm/s) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
+	float SlideSpeed = 800.f;
+
+	/** Slide 쿨다운 (초) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
+	float SlideCooldown = 1.5f;
+
+	/** Slide 시 캡슐 반높이 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
+	float SlideCapsuleHalfHeight = 48.f;
+
 public:
 
 	/** Constructor */
-	AObstacle_AvoidanceCharacter();	
+	AObstacle_AvoidanceCharacter();
+
+	FORCEINLINE bool GetIsDashing() const { return bIsDashing; }
+	FORCEINLINE bool GetIsSliding() const { return bIsSliding; }
 
 protected:
 
-	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-protected:
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+
+	// ── Dash ──
+
+	void StartDash();
+	void OnDashMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	// ── Slide ──
+
+	void StartSlide();
+	void OnSlideMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 public:
 
@@ -92,5 +143,18 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+private:
+
+	bool bIsDashing = false;
+	bool bIsSliding = false;
+	bool bCanDash = true;
+	bool bCanSlide = true;
+
+	float DefaultMaxWalkSpeed = 0.f;
+	float DefaultGroundFriction = 0.f;
+
+	FTimerHandle DashCooldownTimer;
+	FTimerHandle SlideCooldownTimer;
 };
 

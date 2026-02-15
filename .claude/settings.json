@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "unrealclaude": {
+      "command": "node",
+      "args": ["Plugins/UnrealClaude/Resources/mcp-bridge/index.js"],
+      "env": {
+        "UNREAL_MCP_URL": "http://localhost:3000",
+        "INJECT_CONTEXT": "true"
+      }
+    },
+    "unreal-analyzer": {
+      "command": "node",
+      "args": ["MCP/unreal-analyzer-mcp/build/index.js"],
+      "env": {
+        "UNREAL_SOURCE_PATH": "Source/"
+      }
+    },
+    "unreal-python": {
+      "command": "npx",
+      "args": ["-y", "@runreal/unreal-mcp"]
+    }
+  }
+}

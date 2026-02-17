@@ -6,6 +6,7 @@ Saved/
 Build/
 node_modules/
 MCP/
+Scripts/
 
 # IDE
 .vs/

@@ -1,7 +1,7 @@
-# TestAI - Unreal Engine 5.7 프로젝트
+# Obstacle_Avoidance - Unreal Engine 5.7 프로젝트
 
 ## 프로젝트 개요
-- 프로젝트 이름: TestAI
+- 프로젝트 이름: Obstacle_Avoidance
 - 엔진 버전: Unreal Engine 5.7
 - 주요 시스템: Enhanced Input, StateTree AI, UMG UI
 - 플러그인: UnrealClaude (MCP 통합), AIAssistant, StateTree, GameplayStateTree

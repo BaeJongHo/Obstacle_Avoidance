@@ -25,6 +25,8 @@ public class Obstacle_Avoidance : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"Obstacle_Avoidance",
+			"Obstacle_Avoidance/Actor",
+			"Obstacle_Avoidance/GameMode",
 			"Obstacle_Avoidance/Variant_Platforming",
 			"Obstacle_Avoidance/Variant_Platforming/Animation",
 			"Obstacle_Avoidance/Variant_Combat",

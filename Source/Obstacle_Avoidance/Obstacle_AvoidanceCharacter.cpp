@@ -9,6 +9,7 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "InputAction.h"
 #include "InputActionValue.h"
 #include "Animation/AnimMontage.h"
 #include "Obstacle_Avoidance.h"
@@ -50,10 +51,29 @@ AObstacle_AvoidanceCharacter::AObstacle_AvoidanceCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+
 }
 
 void AObstacle_AvoidanceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
+	// Blueprint에서 미할당된 에셋을 런타임 로드 (Live Coding 후 Blueprint 미갱신 대응)
+	if (!DashAction)
+	{
+		DashAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_Dash.IA_Dash"));
+	}
+	if (!SlideAction)
+	{
+		SlideAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_Slide.IA_Slide"));
+	}
+	if (!DashMontage)
+	{
+		DashMontage = LoadObject<UAnimMontage>(nullptr, TEXT("/Game/Characters/Mannequins/Anims/Unarmed/Jump/AM_Dash.AM_Dash"));
+	}
+	if (!SlideMontage)
+	{
+		SlideMontage = LoadObject<UAnimMontage>(nullptr, TEXT("/Game/FreeAnimationLibrary/Animations/Slide/AM_Slide.AM_Slide"));
+	}
+
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
@@ -69,12 +89,6 @@ void AObstacle_AvoidanceCharacter::SetupPlayerInputComponent(UInputComponent* Pl
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AObstacle_AvoidanceCharacter::Look);
 
 		// Dash
-		UE_LOG(LogObstacle_Avoidance, Warning, TEXT("SetupInput: DashAction=%s, SlideAction=%s, DashMontage=%s, SlideMontage=%s"),
-			DashAction ? *GetNameSafe(DashAction) : TEXT("NULL"),
-			SlideAction ? *GetNameSafe(SlideAction) : TEXT("NULL"),
-			DashMontage ? *GetNameSafe(DashMontage) : TEXT("NULL"),
-			SlideMontage ? *GetNameSafe(SlideMontage) : TEXT("NULL"));
-
 		if (DashAction)
 		{
 			EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Started, this, &AObstacle_AvoidanceCharacter::StartDash);

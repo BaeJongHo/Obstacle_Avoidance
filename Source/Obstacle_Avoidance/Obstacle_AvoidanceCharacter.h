@@ -78,17 +78,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
 	TObjectPtr<UAnimMontage> SlideMontage;
 
-	/** Slide 이동 속도 (cm/s) */
+	/** Slide 초기 속도 (cm/s) — LaunchCharacter로 부여 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
-	float SlideSpeed = 800.f;
+	float SlideSpeed = 1600.f;
 
 	/** Slide 쿨다운 (초) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
 	float SlideCooldown = 1.5f;
 
-	/** Slide 시 캡슐 반높이 */
+	/** Slide 종료 후 속도 감속 시간 (초) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
+	float SlideRecoveryTime = 0.3f;
+
+	/** Slide 캡슐 높이 (절반) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
 	float SlideCapsuleHalfHeight = 48.f;
+
+	/** 캡슐 복원 보간 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
+	float CapsuleInterpSpeed = 12.f;
 
 public:
 
@@ -97,6 +105,8 @@ public:
 
 	FORCEINLINE bool GetIsDashing() const { return bIsDashing; }
 	FORCEINLINE bool GetIsSliding() const { return bIsSliding; }
+
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 
@@ -117,6 +127,7 @@ protected:
 
 	void StartSlide();
 	void OnSlideMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void FinishSlideRecovery();
 
 public:
 
@@ -153,8 +164,16 @@ private:
 
 	float DefaultMaxWalkSpeed = 0.f;
 	float DefaultGroundFriction = 0.f;
+	float DefaultBrakingDeceleration = 0.f;
+	float DefaultCapsuleHalfHeight = 0.f;
+	FVector DefaultMeshRelativeLocation = FVector::ZeroVector;
+
+	bool bRestoringCapsule = false;
+	float TargetCapsuleHalfHeight = 0.f;
+	FVector TargetMeshRelativeLocation = FVector::ZeroVector;
 
 	FTimerHandle DashCooldownTimer;
 	FTimerHandle SlideCooldownTimer;
+	FTimerHandle SlideRecoveryTimer;
 };
 

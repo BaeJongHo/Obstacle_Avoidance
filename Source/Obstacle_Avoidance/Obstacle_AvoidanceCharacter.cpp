@@ -36,7 +36,6 @@ AObstacle_AvoidanceCharacter::AObstacle_AvoidanceCharacter()
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
-	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -233,11 +232,6 @@ void AObstacle_AvoidanceCharacter::OnDashMontageEnded(UAnimMontage* Montage, boo
 
 void AObstacle_AvoidanceCharacter::StartSlide()
 {
-	UE_LOG(LogObstacle_Avoidance, Warning, TEXT("StartSlide called! bCanSlide=%d, bIsSliding=%d, bIsDashing=%d, OnGround=%d, SlideMontage=%s"),
-		bCanSlide, bIsSliding, bIsDashing,
-		GetCharacterMovement()->IsMovingOnGround(),
-		SlideMontage ? *GetNameSafe(SlideMontage) : TEXT("NULL"));
-
 	if (!bCanSlide || bIsSliding || bIsDashing)
 	{
 		return;
@@ -260,18 +254,26 @@ void AObstacle_AvoidanceCharacter::StartSlide()
 	// 기본값 저장
 	DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 	DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
+	DefaultBrakingDeceleration = GetCharacterMovement()->BrakingDecelerationWalking;
+	DefaultCapsuleHalfHeight = GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+	DefaultMeshRelativeLocation = GetMesh()->GetRelativeLocation();
 
-	// Crouch 시스템으로 캡슐 축소 (위치 보정 자동 처리)
-	GetCharacterMovement()->CrouchedHalfHeight = SlideCapsuleHalfHeight;
-	Crouch();
+	// 캡슐 높이를 줄이고, 줄어든 만큼 메시를 위로 올려서 바닥에 빠지지 않게 함
+	const float HeightDiff = DefaultCapsuleHalfHeight - SlideCapsuleHalfHeight;
+	GetCapsuleComponent()->SetCapsuleHalfHeight(SlideCapsuleHalfHeight);
+	GetMesh()->SetRelativeLocation(DefaultMeshRelativeLocation + FVector(0.f, 0.f, HeightDiff));
 
-	// 마찰 감소 + 속도 증가
+	// 캡슐 복원 플래그 초기화
+	bRestoringCapsule = false;
+
+	// 마찰·감속 제거 + MaxWalkSpeed를 SlideSpeed로 올려야 Velocity가 클램프되지 않음
 	GetCharacterMovement()->GroundFriction = 0.f;
+	GetCharacterMovement()->BrakingDecelerationWalking = 0.f;
 	GetCharacterMovement()->MaxWalkSpeed = SlideSpeed;
 
-	// 전방으로 속도 부여
+	// LaunchCharacter로 전방 속도 부여 (Walking 모드의 내부 감속을 우회)
 	const FVector SlideDirection = GetActorForwardVector();
-	GetCharacterMovement()->Velocity = SlideDirection * SlideSpeed;
+	LaunchCharacter(SlideDirection * SlideSpeed, true, true);
 
 	// 몽타주 재생
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -289,10 +291,21 @@ void AObstacle_AvoidanceCharacter::OnSlideMontageEnded(UAnimMontage* Montage, bo
 {
 	bIsSliding = false;
 
-	// UnCrouch로 캡슐 복원 (위치 보정 자동 처리, 덜컹거림 없음)
-	UnCrouch();
+	// 속도 복원
 	GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
-	GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
+
+	// 마찰·감속을 점진적으로 복원 (절반 값으로 시작)
+	GetCharacterMovement()->GroundFriction = DefaultGroundFriction * 0.5f;
+	GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration * 0.3f;
+
+	// 캡슐 높이 + 메시 위치를 Tick에서 점진적으로 복원 시작
+	TargetCapsuleHalfHeight = DefaultCapsuleHalfHeight;
+	TargetMeshRelativeLocation = DefaultMeshRelativeLocation;
+	bRestoringCapsule = true;
+
+	// 일정 시간 후 마찰·감속을 완전 복원
+	GetWorldTimerManager().SetTimer(SlideRecoveryTimer, this,
+		&AObstacle_AvoidanceCharacter::FinishSlideRecovery, SlideRecoveryTime, false);
 
 	// 쿨다운 타이머
 	GetWorldTimerManager().SetTimer(SlideCooldownTimer, [this]()
@@ -300,3 +313,38 @@ void AObstacle_AvoidanceCharacter::OnSlideMontageEnded(UAnimMontage* Montage, bo
 		bCanSlide = true;
 	}, SlideCooldown, false);
 }
+
+void AObstacle_AvoidanceCharacter::FinishSlideRecovery()
+{
+	GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
+	GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+}
+
+void AObstacle_AvoidanceCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bRestoringCapsule)
+	{
+		const float CurrentHalfHeight = GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+		const float NewHalfHeight = FMath::FInterpTo(CurrentHalfHeight, TargetCapsuleHalfHeight, DeltaTime, CapsuleInterpSpeed);
+
+		// 메시 위치도 동일한 속도로 보간
+		const FVector CurrentMeshLoc = GetMesh()->GetRelativeLocation();
+		const FVector NewMeshLoc = FMath::VInterpTo(CurrentMeshLoc, TargetMeshRelativeLocation, DeltaTime, CapsuleInterpSpeed);
+
+		if (FMath::IsNearlyEqual(NewHalfHeight, TargetCapsuleHalfHeight, 0.5f))
+		{
+			// 목표에 도달 — 정확한 값으로 설정하고 종료
+			GetCapsuleComponent()->SetCapsuleHalfHeight(TargetCapsuleHalfHeight);
+			GetMesh()->SetRelativeLocation(TargetMeshRelativeLocation);
+			bRestoringCapsule = false;
+		}
+		else
+		{
+			GetCapsuleComponent()->SetCapsuleHalfHeight(NewHalfHeight);
+			GetMesh()->SetRelativeLocation(NewMeshLoc);
+		}
+	}
+}
+

@@ -18,14 +18,17 @@ AOAPendulum::AOAPendulum()
 	// Swing arm - this component rotates to create the pendulum motion
 	SwingArm = CreateDefaultSubobject<USceneComponent>(TEXT("SwingArm"));
 	SwingArm->SetupAttachment(PivotPoint);
+	SwingArm->SetMobility(EComponentMobility::Movable);
 
 	// Pendulum mesh - offset downward by ArmLength
 	PendulumMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PendulumMesh"));
 	PendulumMesh->SetupAttachment(SwingArm);
-	PendulumMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -300.0f));
-	PendulumMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	PendulumMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 0.f));
+	PendulumMesh->SetRelativeRotation(FRotator(180.0f, 0.0f, 0.0f));
+	PendulumMesh->SetMobility(EComponentMobility::Movable);
+	PendulumMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	PendulumMesh->SetCollisionObjectType(ECC_WorldDynamic);
-	PendulumMesh->SetCollisionResponseToAllChannels(ECR_Block);
+	PendulumMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	PendulumMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
 	// Load default mesh

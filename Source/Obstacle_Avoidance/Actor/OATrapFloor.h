@@ -44,6 +44,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trap Floor", meta = (ClampMin = "0.0", Units = "s"))
 	float FallDelay = 1.5f;
 
+	/** Time in seconds before the platform respawns after falling. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trap Floor", meta = (ClampMin = "0.0", Units = "s"))
+	float RespawnDelay = 3.f;
+
 private:
 
 	bool bTriggered = false;
@@ -51,7 +55,10 @@ private:
 	float FallSpeed = 0.0f;
 	float FallDistance = 0.0f;
 
+	FVector InitialLocation = FVector::ZeroVector;
+
 	FTimerHandle FallTimerHandle;
+	FTimerHandle RespawnTimerHandle;
 
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -59,4 +66,5 @@ private:
 		bool bFromSweep, const FHitResult& SweepResult);
 
 	void StartFalling();
+	void RespawnPlatform();
 };

@@ -7,7 +7,6 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
-#include "GameMode/OAGameMode.h"
 
 AOAGoalVolume::AOAGoalVolume()
 {
@@ -53,12 +52,6 @@ void AOAGoalVolume::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AAc
 	{
 		CMC->StopMovementImmediately();
 		CMC->DisableMovement();
-	}
-
-	// Disable auto-run in game mode
-	if (AOAGameMode* GM = Cast<AOAGameMode>(UGameplayStatics::GetGameMode(this)))
-	{
-		GM->SetAutoRunEnabled(false);
 	}
 
 	// Disable player input

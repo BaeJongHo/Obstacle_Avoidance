@@ -49,6 +49,7 @@ void AOATrapFloor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitialLocation = GetActorLocation();
 	OverlapBox->OnComponentBeginOverlap.AddDynamic(this, &AOATrapFloor::OnOverlapBegin);
 }
 
@@ -69,7 +70,15 @@ void AOATrapFloor::Tick(float DeltaTime)
 	FallDistance += DeltaFall;
 	if (FallDistance > 1000.0f)
 	{
-		Destroy();
+		// Hide and schedule respawn instead of destroying
+		SetActorHiddenInGame(true);
+		SetActorEnableCollision(false);
+		SetActorTickEnabled(false);
+		bIsFalling = false;
+
+		GetWorldTimerManager().SetTimer(
+			RespawnTimerHandle, this, &AOATrapFloor::RespawnPlatform,
+			RespawnDelay, false);
 	}
 }
 
@@ -100,4 +109,20 @@ void AOATrapFloor::StartFalling()
 
 	bIsFalling = true;
 	SetActorTickEnabled(true);
+}
+
+void AOATrapFloor::RespawnPlatform()
+{
+	// Reset position and state
+	SetActorLocation(InitialLocation);
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+
+	PlatformMesh->SetCollisionProfileName(TEXT("BlockAll"));
+	OverlapBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+	bTriggered = false;
+	bIsFalling = false;
+	FallSpeed = 0.0f;
+	FallDistance = 0.0f;
 }

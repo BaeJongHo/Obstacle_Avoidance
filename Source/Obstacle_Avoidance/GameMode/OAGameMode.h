@@ -6,11 +6,9 @@
 #include "Obstacle_AvoidanceGameMode.h"
 #include "OAGameMode.generated.h"
 
-class AObstacle_AvoidanceCharacter;
-
 /**
- *  Auto-running obstacle avoidance game mode.
- *  Continuously moves the player character forward (like holding W).
+ *  Obstacle avoidance game mode.
+ *  Player controls all movement manually.
  */
 UCLASS()
 class AOAGameMode : public AObstacle_AvoidanceGameMode
@@ -20,18 +18,4 @@ class AOAGameMode : public AObstacle_AvoidanceGameMode
 public:
 
 	AOAGameMode();
-
-	virtual void Tick(float DeltaTime) override;
-
-	FORCEINLINE void SetAutoRunEnabled(bool bEnabled) { bAutoRunEnabled = bEnabled; }
-
-protected:
-
-	/** Auto-run speed multiplier (1.0 = full forward input) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AutoRun")
-	float AutoRunInputScale = 1.f;
-
-	/** Whether auto-run is currently active */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AutoRun")
-	bool bAutoRunEnabled = true;
 };

@@ -23,6 +23,8 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	FORCEINLINE void SetAutoRunEnabled(bool bEnabled) { bAutoRunEnabled = bEnabled; }
+
 protected:
 
 	/** Auto-run speed multiplier (1.0 = full forward input) */

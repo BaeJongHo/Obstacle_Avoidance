@@ -11,6 +11,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputAction.h"
 #include "InputActionValue.h"
+#include "InputMappingContext.h"
 #include "Animation/AnimMontage.h"
 #include "Obstacle_Avoidance.h"
 
@@ -72,6 +73,22 @@ AObstacle_AvoidanceCharacter::AObstacle_AvoidanceCharacter()
 void AObstacle_AvoidanceCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Blueprint에서 미할당된 에셋을 런타임 로드 (Live Coding 후 Blueprint 미갱신 대응)
+	if (!JumpAction)
+	{
+		JumpAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_Jump.IA_Jump"));
+	}
+	if (!MoveAction)
+	{
+		MoveAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_Move.IA_Move"));
+	}
+	if (!LookAction)
+	{
+		LookAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_Look.IA_Look"));
+	}
+	if (!MouseLookAction)
+	{
+		MouseLookAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_MouseLook.IA_MouseLook"));
+	}
 	if (!DashAction)
 	{
 		DashAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Input/Actions/IA_Dash.IA_Dash"));
@@ -87,6 +104,23 @@ void AObstacle_AvoidanceCharacter::SetupPlayerInputComponent(UInputComponent* Pl
 	if (!SlideMontage)
 	{
 		SlideMontage = LoadObject<UAnimMontage>(nullptr, TEXT("/Game/FreeAnimationLibrary/Animations/Slide/AM_Slide.AM_Slide"));
+	}
+
+	// PlayerController가 IMC를 등록하지 않은 경우를 대비한 폴백
+	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			if (UInputMappingContext* IMC = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Input/IMC_Default.IMC_Default")))
+			{
+				Subsystem->AddMappingContext(IMC, 0);
+			}
+			if (UInputMappingContext* IMC = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Input/IMC_MouseLook.IMC_MouseLook")))
+			{
+				Subsystem->AddMappingContext(IMC, 1);
+			}
+		}
 	}
 
 	// Set up action bindings

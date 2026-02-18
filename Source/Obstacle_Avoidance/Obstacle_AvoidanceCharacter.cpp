@@ -173,6 +173,33 @@ void AObstacle_AvoidanceCharacter::DoJumpEnd()
 	StopJumping();
 }
 
+// ── Death ──
+
+void AObstacle_AvoidanceCharacter::Die()
+{
+	if (bIsDead)
+	{
+		return;
+	}
+
+	bIsDead = true;
+
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	// Stop any ongoing montages
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->StopAllMontages(0.2f);
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		DisableInput(PC);
+	}
+}
+
 // ── Dash ──
 
 void AObstacle_AvoidanceCharacter::StartDash()

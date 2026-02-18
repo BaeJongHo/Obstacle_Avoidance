@@ -28,7 +28,7 @@ void AOAGameMode::Tick(float DeltaTime)
 		}
 
 		AObstacle_AvoidanceCharacter* Character = Cast<AObstacle_AvoidanceCharacter>(PC->GetPawn());
-		if (!Character)
+		if (!Character || Character->IsDead())
 		{
 			continue;
 		}

@@ -105,6 +105,11 @@ public:
 
 	FORCEINLINE bool GetIsDashing() const { return bIsDashing; }
 	FORCEINLINE bool GetIsSliding() const { return bIsSliding; }
+	FORCEINLINE bool IsDead() const { return bIsDead; }
+
+	/** Kill the character — disables movement and input. */
+	UFUNCTION(BlueprintCallable, Category = "State")
+	virtual void Die();
 
 	virtual void Tick(float DeltaTime) override;
 
@@ -157,6 +162,7 @@ public:
 
 private:
 
+	bool bIsDead = false;
 	bool bIsDashing = false;
 	bool bIsSliding = false;
 	bool bCanDash = true;

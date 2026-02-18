@@ -6,6 +6,7 @@
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "GameFramework/Character.h"
+#include "Obstacle_AvoidanceCharacter.h"
 
 AOAJumpPad::AOAJumpPad()
 {
@@ -65,6 +66,12 @@ void AOAJumpPad::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor
 	if (!Character)
 	{
 		return;
+	}
+
+	AObstacle_AvoidanceCharacter* OACharacter = Cast<AObstacle_AvoidanceCharacter>(Character);
+	if (OACharacter)
+	{
+		OACharacter->SetJumpPadLaunched();
 	}
 
 	const FVector LaunchVelocity(0.0f, 0.0f, LaunchForce);

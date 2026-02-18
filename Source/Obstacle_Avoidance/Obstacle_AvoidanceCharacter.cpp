@@ -14,6 +14,22 @@
 #include "Animation/AnimMontage.h"
 #include "Obstacle_Avoidance.h"
 
+void AObstacle_AvoidanceCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Store spawn transform for respawn
+	StartLocation = GetActorLocation();
+	StartRotation = GetActorRotation();
+
+	// Cache default values for respawn restoration
+	DefaultCapsuleHalfHeight = GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
+	DefaultMeshRelativeLocation = GetMesh()->GetRelativeLocation();
+	DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+	DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
+	DefaultBrakingDeceleration = GetCharacterMovement()->BrakingDecelerationWalking;
+}
+
 AObstacle_AvoidanceCharacter::AObstacle_AvoidanceCharacter()
 {
 	// Set size for collision capsule
@@ -173,6 +189,32 @@ void AObstacle_AvoidanceCharacter::DoJumpEnd()
 	StopJumping();
 }
 
+// ── Airborne Die ──
+
+void AObstacle_AvoidanceCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	if (bIsDead)
+	{
+		return;
+	}
+
+	if (GetCharacterMovement()->MovementMode == MOVE_Falling)
+	{
+		if (!bJumpPadLaunched)
+		{
+			GetWorldTimerManager().SetTimer(AirborneDieTimer, this,
+				&AObstacle_AvoidanceCharacter::Die, AirborneDieTime, false);
+		}
+	}
+	else
+	{
+		GetWorldTimerManager().ClearTimer(AirborneDieTimer);
+		bJumpPadLaunched = false;
+	}
+}
+
 // ── Death ──
 
 void AObstacle_AvoidanceCharacter::Die()
@@ -184,19 +226,67 @@ void AObstacle_AvoidanceCharacter::Die()
 
 	bIsDead = true;
 
+	// Reset action states
+	bIsDashing = false;
+	bIsSliding = false;
+	bRestoringCapsule = false;
+
+	// Cancel all running timers (dash/slide cooldowns, recovery, etc.)
+	GetWorldTimerManager().ClearAllTimersForObject(this);
+
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();
-
-	// Stop any ongoing montages
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		AnimInstance->StopAllMontages(0.2f);
-	}
 
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
 	{
 		DisableInput(PC);
+	}
+
+	// Stop ongoing montages then play death montage
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->StopAllMontages(0.0f);
+
+		if (DeathMontage)
+		{
+			AnimInstance->Montage_Play(DeathMontage);
+		}
+	}
+}
+
+void AObstacle_AvoidanceCharacter::Respawn()
+{
+	bIsDead = false;
+	bIsDashing = false;
+	bIsSliding = false;
+	bCanDash = true;
+	bCanSlide = true;
+	bRestoringCapsule = false;
+
+	// Restore capsule and mesh to defaults
+	GetCapsuleComponent()->SetCapsuleHalfHeight(DefaultCapsuleHalfHeight);
+	GetMesh()->SetRelativeLocation(DefaultMeshRelativeLocation);
+
+	// Restore movement parameters
+	GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+	GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
+	GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+
+	// Teleport to start location
+	SetActorLocation(StartLocation);
+	SetActorRotation(StartRotation);
+
+	// Re-enable movement
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+	// Re-enable input and reset camera
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		EnableInput(PC);
+		PC->SetControlRotation(StartRotation);
 	}
 }
 
@@ -350,6 +440,13 @@ void AObstacle_AvoidanceCharacter::FinishSlideRecovery()
 void AObstacle_AvoidanceCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 시작 위치 Z 기준 FallDeathHeight 이하로 떨어지면 즉시 사망
+	if (!bIsDead && GetActorLocation().Z < StartLocation.Z - FallDeathHeight)
+	{
+		Die();
+		return;
+	}
 
 	if (bRestoringCapsule)
 	{

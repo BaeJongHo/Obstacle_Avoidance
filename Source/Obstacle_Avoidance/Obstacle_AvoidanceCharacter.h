@@ -98,6 +98,20 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Slide")
 	float CapsuleInterpSpeed = 12.f;
 
+	// ── Death ──
+
+	/** Death AnimMontage (BP에서 설정) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Death")
+	TObjectPtr<UAnimMontage> DeathMontage;
+
+	/** 공중에 이 시간(초) 이상 떠있으면 사망 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Death")
+	float AirborneDieTime = 5.f;
+
+	/** 시작 위치 Z 기준, 이 높이 이하로 떨어지면 즉시 사망 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Death")
+	float FallDeathHeight = 1000.f;
+
 public:
 
 	/** Constructor */
@@ -107,15 +121,24 @@ public:
 	FORCEINLINE bool GetIsSliding() const { return bIsSliding; }
 	FORCEINLINE bool IsDead() const { return bIsDead; }
 
-	/** Kill the character — disables movement and input. */
+	/** 점프 패드에 의한 공중 상태임을 표시 (공중 사망 타이머 제외용) */
+	void SetJumpPadLaunched() { bJumpPadLaunched = true; }
+
+	/** Kill the character — disables movement and input, plays death montage. */
 	UFUNCTION(BlueprintCallable, Category = "State")
 	virtual void Die();
+
+	/** Respawn the character at the start location. Called by UOAAnimNotify_Respawn. */
+	UFUNCTION(BlueprintCallable, Category = "State")
+	void Respawn();
 
 	virtual void Tick(float DeltaTime) override;
 
 protected:
 
+	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode) override;
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
@@ -165,6 +188,7 @@ private:
 	bool bIsDead = false;
 	bool bIsDashing = false;
 	bool bIsSliding = false;
+	bool bJumpPadLaunched = false;
 	bool bCanDash = true;
 	bool bCanSlide = true;
 
@@ -181,5 +205,9 @@ private:
 	FTimerHandle DashCooldownTimer;
 	FTimerHandle SlideCooldownTimer;
 	FTimerHandle SlideRecoveryTimer;
+	FTimerHandle AirborneDieTimer;
+
+	FVector StartLocation = FVector::ZeroVector;
+	FRotator StartRotation = FRotator::ZeroRotator;
 };
 

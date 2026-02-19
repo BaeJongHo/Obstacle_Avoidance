@@ -7,11 +7,13 @@
 #include "OAGoalVolume.generated.h"
 
 class UBoxComponent;
+class USpringArmComponent;
 
 /**
  * Goal volume placed at the end of a stage.
- * When the player overlaps, movement stops immediately and the game
- * transitions to the next level after a configurable delay.
+ * When the player overlaps, movement stops immediately and a camera orbit
+ * sequence plays around the player. The game transitions to the next level
+ * once the orbit completes.
  */
 UCLASS()
 class AOAGoalVolume : public AActor
@@ -25,6 +27,7 @@ public:
 protected:
 
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
 
 	/** Overlap trigger covering the path width */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -34,19 +37,40 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal")
 	FName NextLevelName;
 
-	/** Seconds to wait before opening the next level */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal", meta = (ClampMin = "0.0", Units = "s"))
-	float TransitionDelay = 3.f;
+	// ── Camera Orbit Settings ──
+
+	/** Duration of the 360-degree camera orbit (seconds) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal|Camera Orbit", meta = (ClampMin = "0.5", Units = "s"))
+	float OrbitDuration = 3.f;
+
+	/** Orbit radius from the player character (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal|Camera Orbit", meta = (ClampMin = "100.0", Units = "cm"))
+	float OrbitRadius = 500.f;
+
+	/** Camera pitch during orbit — negative looks down at the player */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Goal|Camera Orbit", meta = (ClampMin = "-89.0", ClampMax = "89.0", Units = "deg"))
+	float OrbitPitch = -20.f;
 
 private:
 
 	bool bTriggered = false;
-	FTimerHandle TransitionTimerHandle;
+
+	// ── Orbit Runtime State ──
+
+	float OrbitElapsedTime = 0.f;
+	float StartYawAngle = 0.f;
+
+	TWeakObjectPtr<ACharacter> OrbitTargetCharacter;
+	TWeakObjectPtr<APlayerController> CachedPlayerController;
+	TWeakObjectPtr<USpringArmComponent> CachedCameraBoom;
 
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 		bool bFromSweep, const FHitResult& SweepResult);
 
+	void BeginCameraOrbit(ACharacter* InCharacter, APlayerController* InPC);
+	void UpdateCameraOrbit(float DeltaTime);
+	void FinishCameraOrbit();
 	void TransitionToNextLevel();
 };
